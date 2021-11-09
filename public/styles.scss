@@ -1,0 +1,56 @@
+#app {
+  .alert {
+    .badge {
+      margin-left: 1rem;
+    }
+  }
+
+  .btn-xs {
+    padding: .15rem .25rem;
+    font-size: .75rem;
+    line-height: 1.5;
+    border-radius: .1rem;
+  }
+
+  address {
+    margin-bottom: 0;
+  }
+
+  .import-debug {
+    font-size: 11px;
+    padding: 0.25rem;
+    white-space: pre-wrap;
+    font-family: "Roboto Mono", monospace;
+  }
+
+  td.status-badges {
+    font-size: 12px;
+    font-family: "Roboto Mono", monospace;
+    .badge + .badge {
+      margin-left: 0.25rem;
+    }
+  }
+
+
+  tfoot {
+    font-weight: bold;
+  }
+
+  .progress {
+    height: 5px;
+  }
+
+  .payout-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .table-active {
+    font-weight: bold;
+  }
+
+  .next-page-link {
+    cursor: pointer;
+  }
+}
