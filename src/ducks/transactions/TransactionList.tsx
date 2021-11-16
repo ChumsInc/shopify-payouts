@@ -5,16 +5,18 @@ import InvoiceLink from "../../components/InvoiceLink";
 import ShopifyLink from "../../components/ShopifyLink";
 import {
     defaultTransactionSort,
-    fetchTransactionsAction, selectSortedTransactionList,
-    selectTransactionList,
+    fetchTransactionsAction,
+    selectSortedTransactionList,
     selectTransactionsLoading
 } from "./index";
 import {
     addPageSetAction,
     Alert,
+    ErrorBoundary,
     FormCheck,
     PagerDuck,
-    selectPagedData, selectTableSort,
+    selectPagedData,
+    selectTableSort,
     SortableTable,
     SpinnerButton,
     tableAddedAction
@@ -160,10 +162,14 @@ const TransactionList: React.FC = () => {
                     {' '}order{missingInvoices === 1 ? '' : 's'}.
                 </Alert>
             )}
-            <SortableTable tableKey={tableId} keyField="id" fields={fields} data={pagedList}
-                           rowClassName={rowClassName}
-                           selected={selected?.id} onSelectRow={onSelect} tfoot={tfoot}/>
-            <PagerDuck pageKey={tableId} dataLength={list.length}/>
+            <ErrorBoundary>
+                <SortableTable tableKey={tableId} keyField="id" fields={fields} data={pagedList}
+                               rowClassName={rowClassName}
+                               selected={selected?.id} onSelectRow={onSelect} tfoot={tfoot}/>
+            </ErrorBoundary>
+            <ErrorBoundary>
+                <PagerDuck pageKey={tableId} dataLength={list.length}/>
+            </ErrorBoundary>
         </Fragment>
     );
 }

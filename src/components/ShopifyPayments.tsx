@@ -1,6 +1,7 @@
 import React from 'react';
 import PayoutsList from "../ducks/payouts/PayoutsList";
 import TransactionList from "../ducks/transactions/TransactionList";
+import {ErrorBoundary} from "chums-ducks";
 
 const ShopifyPayments:React.FC = () => {
     return (
@@ -9,7 +10,9 @@ const ShopifyPayments:React.FC = () => {
                 <PayoutsList />
             </div>
             <div className="col-lg-9 col-md-8 col-6">
-                <TransactionList />
+                <ErrorBoundary>
+                    <TransactionList />
+                </ErrorBoundary>
             </div>
         </div>
     )

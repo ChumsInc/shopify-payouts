@@ -78,7 +78,7 @@ const ShopifyOrderStatus: React.FC<ShopifyOrderStatusProps> = ({
     return (
         <Fragment>
             {hasDiscount && (<Badge color="primary" text="discount"/>)}
-            {tags.split(' ')
+            {(tags || '').split(' ')
                 .filter(tag => tag !== 'printed')
                 .map(tag => (<Badge color="info">{tag}</Badge>))}
         </Fragment>
