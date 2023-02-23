@@ -12,6 +12,6 @@ const ShopifyLink:React.FC<ShopifyLinkProps> = ({id, name}) => {
     }
 
     const url = shopify_url.replace(':id', encodeURIComponent(id));
-    return (<a href={url} target="_blank">{name ?? id}</a>)
+    return (<a href={url} target="_blank">{id}</a>)
 }
 export default ShopifyLink;

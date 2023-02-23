@@ -40,15 +40,15 @@ const fields: SortableTableField<TransactionTableFields>[] = [
         sortable: true
     },
     {
-        field: 'InvoiceNo',
-        title: 'Invoice #',
-        render: row => <InvoiceLink invoiceNo={row.order?.InvoiceNo} sage_Company={row.order?.sage_Company}/>,
-        sortable: true
-    },
-    {
         field: 'email',
         title: 'Email',
         render: row => row.order?.shopify_order?.email ?? null,
+        sortable: true
+    },
+    {
+        field: 'InvoiceNo',
+        title: 'Invoice #',
+        render: row => <InvoiceLink invoiceNo={row.order?.InvoiceNo} sage_Company={row.order?.sage_Company}/>,
         sortable: true
     },
     {
