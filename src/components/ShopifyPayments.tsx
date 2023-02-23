@@ -1,7 +1,7 @@
 import React from 'react';
 import PayoutsList from "../ducks/payouts/PayoutsList";
 import TransactionList from "../ducks/transactions/TransactionList";
-import {ErrorBoundary} from "chums-ducks";
+import {ErrorBoundary} from "chums-components";
 
 const ShopifyPayments:React.FC = () => {
     return (

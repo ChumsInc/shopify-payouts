@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {useDispatch, useSelector} from 'react-redux';
+import {useSelector} from 'react-redux';
 import {format} from 'date-fns';
 import numeral from 'numeral';
 
@@ -10,38 +10,24 @@ import SalesOrderLink from "../../components/SalesOrderLink";
 import InvoiceLink from "../../components/InvoiceLink";
 import {
     selectCashApplied,
-    selectCashAppliedTotal,
-    selectPaypalOrdersLoading,
-    selectSelectedOrder,
-    selectSortedPaypalOrders
+    selectCurrentOrder,
+    selectLoading,
+    selectPage,
+    selectRowsPerPage,
+    selectSort,
+    selectSortedList
 } from "./selectors";
-import {ShopifyCustomer, ShopifyOrder, ShopifyOrderSorterProps} from "../common-types";
-import {
-    addPageSetAction, PagerDuck,
-    selectPagedData,
-    selectTableSort,
-    SortableTable,
-    SortableTableField,
-    SpinnerButton,
-    tableAddedAction
-} from "chums-ducks";
-import {applyCashToOrdersAction, fetchPaypalOrdersAction, selectPaypalOrderAction} from "./actions";
+import {SortableTable, SortableTableField, SpinnerButton, TablePagination} from "chums-components";
 import PayPalOrdersFooter from "./PayPalOrdersFooter";
+import {ExtendedSavedOrder, ShopifyOrder, SortProps} from "chums-types";
+import {loadPaypalInvoices, setCashApplied, setCurrentOrder, setPage, setRowsPerPage, setSort} from "./index";
+import {useAppDispatch} from "../../app/configureStore";
 
 
-const ReloadButton:React.FC = () => {
-    const dispatch = useDispatch();
-    const loading = useSelector(selectPaypalOrdersLoading);
-    const onReloadOrders = () => dispatch(fetchPaypalOrdersAction());
-
-    return (
-        <SpinnerButton type="button" color="primary" size="sm" spinning={loading} onClick={onReloadOrders}>
-            Reload
-        </SpinnerButton>
-    )
-}
-
-const renderOrderDate = ({created_at}: ShopifyOrder) => {
+const renderOrderDate = (created_at?: string) => {
+    if (!created_at) {
+        return null;
+    }
     const date = new Date(created_at);
     return (
         <span>
@@ -52,100 +38,126 @@ const renderOrderDate = ({created_at}: ShopifyOrder) => {
     )
 };
 
-const renderShipping = ({shipping_lines}: ShopifyOrder) => shipping_lines.map(line => line.title).join('; ');
-
 
 const fieldList: SortableTableField[] = [
     {
         field: 'name',
         title: 'Shopify Order #',
         sortable: true,
-        render: (row: ShopifyOrder) => <ShopifyLink id={row.id} name={row.name}/>
+        render: (row: ExtendedSavedOrder) => <ShopifyLink id={row.shopify_order?.id} name={row.shopify_order?.name}/>
     },
-    {field: 'created_at', title: 'Date', sortable: true, render: renderOrderDate},
+    {
+        field: 'created_at',
+        title: 'Date',
+        sortable: true,
+        render: (row: ExtendedSavedOrder) => renderOrderDate(row.shopify_order?.created_at)
+    },
     {
         field: 'CustomerNo',
         title: 'Customer #',
-        render: (row: ShopifyOrder) => [row.ARDivisionNo, row.CustomerNo].join('-')
+        render: (row: ExtendedSavedOrder) => [row.ARDivisionNo, row.CustomerNo].join('-')
     },
     {
         field: 'customer',
         title: 'Customer',
         sortable: true,
-        render: ({customer}: ShopifyOrder) => `${customer.first_name} ${customer.last_name}`,
+        render: (row: ExtendedSavedOrder) => `${row.shopify_order?.customer.first_name ?? ''} ${row.shopify_order?.customer.last_name ?? ''}`,
     },
     {
         field: 'sage_SalesOrderNo',
         title: 'Sage SO #',
         sortable: true,
-        render: (row: ShopifyOrder) => <SalesOrderLink {...row} />
+        render: (row: ExtendedSavedOrder) => <SalesOrderLink sage_SalesOrderNo={row.sage_SalesOrderNo}
+                                                             sage_Company={row.sage_Company}/>
     },
-    {field: 'InvoiceNo', title: 'Invoice #', sortable: true, render: (row: ShopifyOrder) => <InvoiceLink {...row}/>},
+    {
+        field: 'InvoiceNo',
+        title: 'Invoice #',
+        sortable: true,
+        render: (row: ExtendedSavedOrder) => <InvoiceLink sage_Company={row.sage_Company} invoiceNo={row.InvoiceNo}/>
+    },
     {
         field: 'fulfillment_status',
         title: 'Status',
         className: 'status-badges',
         sortable: false,
-        render: (row: ShopifyOrder) => (<ShopifyOrderStatus {...row}/>)
+        render: (row: ExtendedSavedOrder) => (
+            <ShopifyOrderStatus fulfillment_status={row.shopify_order?.fulfillment_status}
+                                total_discounts={row.shopify_order?.total_discounts} tags={row.shopify_order?.tags}/>)
     },
     {
         field: 'apply',
         title: (<ApplyCashCheckbox id={0}/>),
-        render: ({id}: ShopifyOrder) => <ApplyCashCheckbox id={id}/>
+        render: (row: ExtendedSavedOrder) => <ApplyCashCheckbox id={Number(row.shopify_order?.id ?? 0)}/>
     },
     {
         field: 'total_price_usd',
         title: 'Total',
         sortable: true,
-        render: (row: ShopifyOrder) => numeral(row.total_price_usd).format('$0,0.00'),
+        render: (row: ExtendedSavedOrder) => numeral(row.shopify_order?.total_price_usd ?? '0').format('$0,0.00'),
         className: 'right',
     },
 ];
 
-export const ppOrdersTableID = 'paypal-orders';
 
 const PaypalOrdersList: React.FC = () => {
-    const dispatch = useDispatch();
-    const sort = useSelector(selectTableSort(ppOrdersTableID)) as ShopifyOrderSorterProps;
-    const list = useSelector(selectSortedPaypalOrders(sort));
-    const selectedOrder = useSelector(selectSelectedOrder);
-    const pagedList = useSelector(selectPagedData(ppOrdersTableID, list));
+    const dispatch = useAppDispatch();
+    const sort = useSelector(selectSort);
+    const list = useSelector(selectSortedList);
+    const selectedOrder = useSelector(selectCurrentOrder);
+    const page = useSelector(selectPage);
+    const rowsPerPage = useSelector(selectRowsPerPage);
     const cashApplied = useSelector(selectCashApplied);
+    const loading = useSelector(selectLoading);
 
 
     useEffect(() => {
-        dispatch(tableAddedAction({key: ppOrdersTableID, field: 'name', ascending: true}))
-        dispatch(addPageSetAction({key: ppOrdersTableID, rowsPerPage: 10}));
-        dispatch(fetchPaypalOrdersAction());
+        dispatch(loadPaypalInvoices());
     }, []);
 
-    const onSelectOrder = (order: ShopifyOrder) => {
-        console.log('dispatching selectPaypalOrderAction')
-        dispatch(selectPaypalOrderAction(order));
+    const onSelectOrder = (order: ExtendedSavedOrder) => {
+        dispatch(setCurrentOrder(order));
     }
 
-    const onReloadOrders = () => dispatch(fetchPaypalOrdersAction());
+    const onReloadOrders = () => dispatch(loadPaypalInvoices());
 
     const onSelectAll = () => {
-        dispatch(applyCashToOrdersAction([...new Set([...cashApplied, ...pagedList.map(so => so.id)])]));
+        const idList = list.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(row => Number(row.id));
+        dispatch(setCashApplied(idList))
     }
+
+    const sortChangeHandler = (sort: SortProps) => {
+        dispatch(setSort(sort));
+    }
+
+    const pageChangeHandler = (page: number) => dispatch(setPage(page));
+    const rowsPerPageChangeHandler = (rpp: number) => dispatch(setRowsPerPage(rpp));
 
     return (
         <div>
             <div className="row g-3 mb-1">
                 <div className="col-auto">
-                    <ReloadButton />
+                    <SpinnerButton spinning={loading} color="primary" size="sm" onClick={onReloadOrders}>
+                        Reload
+                    </SpinnerButton>
                 </div>
                 <div className="col-auto">
                     <button className="btn btn-sm btn-outline-secondary" onClick={onSelectAll}>Select All</button>
                 </div>
             </div>
 
-            <SortableTable data={pagedList} fields={fieldList} keyField="id" selected={selectedOrder?.id} size="sm"
-                           tableKey={ppOrdersTableID} onSelectRow={onSelectOrder}
-                           tfoot={(<PayPalOrdersFooter />)}
+            <SortableTable data={list.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)}
+                           fields={fieldList}
+                           currentSort={sort}
+                           onChangeSort={sortChangeHandler}
+                           keyField="id" selected={selectedOrder?.id} size="sm"
+                           onSelectRow={onSelectOrder}
+                           tfoot={(<PayPalOrdersFooter/>)}
                            rowClassName={(row) => ({'table-info': cashApplied.includes(row.id)})}/>
-            <PagerDuck pageKey={ppOrdersTableID} dataLength={list.length}/>
+            <TablePagination page={page} onChangePage={pageChangeHandler}
+                             rowsPerPage={rowsPerPage} onChangeRowsPerPage={rowsPerPageChangeHandler}
+                             bsSize="sm"
+                             count={list.length}/>
         </div>
     );
 }

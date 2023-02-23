@@ -1,7 +1,7 @@
 import React from 'react';
 import PaypalOrdersList from "./PaypalOrdersList";
 import OrderInfo from "./OrderInfo";
-import {ErrorBoundary} from "chums-ducks";
+import {ErrorBoundary} from "chums-components";
 
 const PayPalOrders: React.FC = () => {
     return (

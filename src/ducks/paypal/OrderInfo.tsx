@@ -1,37 +1,37 @@
 import React from 'react';
-import {connect, useSelector} from 'react-redux';
-import {format, parseJSON} from "date-fns";
-import {selectSelectedLoading, selectSelectedOrder} from "./selectors";
+import {useSelector} from 'react-redux';
+import {selectCurrentOrder} from "./selectors";
 import OrderInfoDetail from "./OrderInfoDetail";
-import {Alert, LoadingProgressBar} from "chums-ducks";
+import {Alert} from "chums-components";
+import {format, parseJSON} from "date-fns";
 
-const detailFields = [
-    {field: 'sku', title: 'SKU'},
-    {field: 'name', title: 'Description'},
-    {field: 'quantity', title: 'Quantity', className: 'right'},
-    {field: 'price', title: 'Price', className: 'right'},
-];
+// const detailFields = [
+//     {field: 'sku', title: 'SKU'},
+//     {field: 'name', title: 'Description'},
+//     {field: 'quantity', title: 'Quantity', className: 'right'},
+//     {field: 'price', title: 'Price', className: 'right'},
+// ];
 
-const OrderInfo: React.FC = () => {
-    const selected = useSelector(selectSelectedOrder);
-    const loading = useSelector(selectSelectedLoading);
-    if (!selected) {
+const OrderInfo = () => {
+    const selected = useSelector(selectCurrentOrder);
+    if (!selected || !selected.shopify_order) {
         return null;
     }
     const {
-        order_status_url,
-        name,
         import_status,
         sage_SalesOrderNo,
-        customer,
-        created_at,
-        line_items,
         import_result
     } = selected;
+    const {
+        order_status_url,
+        name,
+        customer,
+        created_at,
+    } = selected.shopify_order;
+
     return (
         <div>
             <h3><a href={order_status_url} target="_blank">{name}</a></h3>
-            {loading && (<LoadingProgressBar striped={true}/>)}
             {import_status === 'linked' && (
                 <h4>{name} linked to {sage_SalesOrderNo}</h4>
             )}

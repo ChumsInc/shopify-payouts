@@ -1,103 +1,94 @@
-import {combineReducers} from "redux";
-import {ShopifyOrder} from "../common-types";
-import {
-    PaypalAction,
-    paypalApplyCash,
-    paypalFetchOrderFailed,
-    paypalFetchOrderRequested,
-    paypalFetchOrdersFailed,
-    paypalFetchOrdersRequested,
-    paypalFetchOrdersSucceeded,
-    paypalFetchOrderSucceeded
-} from "./actionTypes";
+import {ExtendedSavedOrder, SortProps} from "chums-types";
+import {createAction, createAsyncThunk, createReducer} from "@reduxjs/toolkit";
+import {fetchPaypalInvoices} from "../../api/payouts";
+import {RootState} from "../../app/configureStore";
+import {selectLoading} from "./selectors";
 
-const orderSort = (a: ShopifyOrder, b: ShopifyOrder): number => a.id - b.id;
+const orderSort = (a: ExtendedSavedOrder, b: ExtendedSavedOrder): number => Number(a.id) - Number(b.id);
 
-const listReducer = (state: ShopifyOrder[] = [], action: PaypalAction): ShopifyOrder[] => {
-    const {type, payload} = action;
-    switch (type) {
-    case paypalFetchOrdersSucceeded:
-        if (payload?.orders) {
-            return payload.orders.sort(orderSort);
+export interface PaypalState {
+    list: ExtendedSavedOrder[];
+    loading: boolean;
+    current: ExtendedSavedOrder | null;
+    cashApplied: number[];
+    page: number;
+    rowsPerPage: number;
+    sort: SortProps
+}
+
+export const initialPaypalState: PaypalState = {
+    list: [],
+    loading: false,
+    current: null,
+    cashApplied: [],
+    page: 0,
+    rowsPerPage: 10,
+    sort: {field: 'sage_SalesOrderNo', ascending: true},
+}
+
+export const loadPaypalInvoices = createAsyncThunk<ExtendedSavedOrder[]>(
+    'paypal/loadInvoices',
+    async () => {
+        return await fetchPaypalInvoices();
+    }, {
+        condition: (arg, {getState}) => {
+            const state = getState() as RootState;
+            return !selectLoading(state);
         }
-        return [];
-    case paypalFetchOrderSucceeded:
-        if (payload?.order) {
-            return [
-                ...state.filter(ord => ord.id !== payload.order?.id),
-                {...payload.order},
-            ].sort(orderSort);
-        }
-        return state;
-    default:
-        return state;
     }
-};
+)
 
-const loadingReducer = (state: boolean = false, action: PaypalAction): boolean => {
-    switch (action.type) {
-    case paypalFetchOrdersRequested:
-        return true;
-    case paypalFetchOrdersSucceeded:
-    case paypalFetchOrdersFailed:
-        return false;
-    default:
-        return state;
-    }
-};
+export const setCurrentOrder = createAction<ExtendedSavedOrder | undefined>('paypal/setCurrentOrder');
+export const toggleCashApplied = createAction<number>('paypal/toggleApplyCash');
+export const setCashApplied = createAction<number[]>('paypal/applyCash');
+export const setPage = createAction<number>('paypal/setPage');
+export const setRowsPerPage = createAction<number>('paypal/setRowsPerPage');
+export const setSort = createAction<SortProps>('paypal/setSort');
 
-const cashAppliedReducer = (state: number[] = [], action: PaypalAction): number[] => {
-    const {type, payload} = action;
-    switch (type) {
-    case paypalApplyCash:
-        if (payload?.orderIdList) {
-            return payload.orderIdList.sort();
-        }
-        if (payload?.orderId) {
-            if (state.includes(payload.orderId)) {
-                return state.filter(id => id !== payload.orderId).sort();
+const paypalReducer = createReducer(initialPaypalState, (builder) => {
+    builder
+        .addCase(loadPaypalInvoices.pending, (state) => {
+            state.loading = true;
+        })
+        .addCase(loadPaypalInvoices.fulfilled, (state, action) => {
+            state.loading = false;
+            state.list = action.payload.sort(orderSort);
+            state.cashApplied = [];
+            if (state.current) {
+                const [current] = state.list.filter(row => row.id === state.current?.id);
+                state.current = current ?? null;
             }
-            return [...state, payload.orderId].sort();
-        }
-        return state;
-    default:
-        return state;
-    }
-};
-
-
-const selectedOrderReducer = (state: ShopifyOrder | null = null, action: PaypalAction): ShopifyOrder | null => {
-    const {type, payload} = action;
-    switch (type) {
-    case paypalFetchOrderRequested:
-    case paypalFetchOrderSucceeded:
-        if (payload?.order) {
-            return {...payload.order};
-        }
-        return null;
-    default:
-        return state;
-    }
-};
-
-const selectedLoadingReducer = (state: boolean = false, action: PaypalAction) => {
-    switch (action.type) {
-    case paypalFetchOrderRequested:
-        return true;
-    case paypalFetchOrderSucceeded:
-    case paypalFetchOrderFailed:
-        return false;
-    default:
-        return state;
-    }
-};
-
-export default combineReducers({
-    list: listReducer,
-    loading: loadingReducer,
-    selected: combineReducers({
-        order: selectedOrderReducer,
-        loading: selectedLoadingReducer,
-    }),
-    cashApplied: cashAppliedReducer,
+        })
+        .addCase(loadPaypalInvoices.rejected, (state) => {
+            state.loading = false;
+        })
+        .addCase(setCurrentOrder, (state, action) => {
+            state.current = action.payload ?? null;
+        })
+        .addCase(toggleCashApplied, (state, action) => {
+            if (state.cashApplied.includes(action.payload)) {
+                state.cashApplied = state.cashApplied.filter(id => id !== action.payload).sort();
+            } else {
+                state.cashApplied = [...state.cashApplied, action.payload].sort();
+            }
+        })
+        .addCase(setCashApplied, (state, action) => {
+            state.cashApplied = [
+                ...state.cashApplied,
+                ...action.payload.filter(id => !state.cashApplied.includes(id))
+            ];
+        })
+        .addCase(setPage, (state, action) => {
+            state.page = action.payload;
+        })
+        .addCase(setRowsPerPage, (state, action) => {
+            state.rowsPerPage = action.payload;
+            state.page = 0;
+        })
+        .addCase(setSort, (state, action) => {
+            state.sort = action.payload;
+            state.page = 0;
+        });
 });
+
+export default paypalReducer;

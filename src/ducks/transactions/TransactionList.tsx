@@ -1,99 +1,111 @@
-import React, {Fragment, useEffect, useState} from 'react';
-import {useDispatch, useSelector} from 'react-redux';
+import React, {ChangeEvent, Fragment, useState} from 'react';
+import {useSelector} from 'react-redux';
 import SalesOrderLink from "../../components/SalesOrderLink";
 import InvoiceLink from "../../components/InvoiceLink";
 import ShopifyLink from "../../components/ShopifyLink";
 import {
-    defaultTransactionSort,
-    fetchTransactionsAction,
+    loadTransactions,
+    selectPage,
+    selectRowsPerPage,
+    selectSort,
     selectSortedTransactionList,
-    selectTransactionsLoading
+    selectTransactionsLoading,
+    setPage,
+    setRowsPerPage,
+    setSort
 } from "./index";
-import {
-    addPageSetAction,
-    Alert,
-    ErrorBoundary,
-    FormCheck,
-    PagerDuck,
-    selectPagedData,
-    selectTableSort,
-    SortableTable,
-    SpinnerButton,
-    tableAddedAction
-} from 'chums-ducks';
-import {ShopifyTransaction, ShopifyTransactionSortProps, ShopifyTransactionTableField} from "../common-types";
-import {markPayoutCompletedAction} from "../payouts/actions";
-import {selectSelectedPayout} from "../payouts";
+import {Alert, FormCheck, SortableTable, SortableTableField, SpinnerButton, TablePagination,} from 'chums-components';
+import {markPayoutComplete, selectCurrentPayout} from "../payouts";
 import numeral from "numeral";
 import ShopifyOrderStatus from "../../components/ShopifyOrderStatus";
+import {TransactionTableFields} from "../types";
+import {useAppDispatch} from "../../app/configureStore";
+import {ShopifyPaymentTransaction, SortProps} from "chums-types";
+import classNames from "classnames";
+import Decimal from "decimal.js";
 
-const fields: ShopifyTransactionTableField[] = [
+const fields: SortableTableField<TransactionTableFields>[] = [
     {field: 'type', title: 'Type', sortable: true},
-    {field: 'source_id', title: 'Shopify Order #', render: row => (<ShopifyLink {...row.order}/>), sortable: true},
     {
-        field: 'SalesOrderNo',
+        field: 'id',
+        title: 'Shopify Order #',
+        render: row => (<ShopifyLink id={row.order?.id ?? null} name={row.order?.shopify_order?.name ?? null}/>),
+        sortable: true
+    },
+    {
+        field: 'sage_SalesOrderNo',
         title: 'Sage SO #',
-        render: row => <SalesOrderLink {...row.order}/>,
-        sortable: true
-    },
-    {field: 'invoice', title: 'Invoice #', render: row => <InvoiceLink {...row.order} />, sortable: true},
-    {
-        field: 'customer',
-        title: 'Customer #',
-        render: row => [row.order.ARDivisionNo, row.order.CustomerNo].join('-'),
+        render: row => <SalesOrderLink sage_SalesOrderNo={row.order?.sage_SalesOrderNo}
+                                       sage_Company={row.order?.sage_Company}/>,
         sortable: true
     },
     {
-        field: 'name',
+        field: 'InvoiceNo',
+        title: 'Invoice #',
+        render: row => <InvoiceLink invoiceNo={row.order?.InvoiceNo} sage_Company={row.order?.sage_Company}/>,
+        sortable: true
+    },
+    {
+        field: 'email',
+        title: 'Email',
+        render: row => row.order?.shopify_order?.email ?? null,
+        sortable: true
+    },
+    {
+        field: 'BillToName',
         title: 'Name',
-        render: row => row.order.BillToName,
+        render: row => row.order?.BillToName,
         sortable: true
     },
-    {field: 'payout_status', title: 'Status', render: (row) => (<ShopifyOrderStatus {...row.order} />)},
+    {
+        field: 'fulfillment_status', title: 'Status',
+        render: (row) => (<ShopifyOrderStatus fulfillment_status={row.order?.shopify_order?.fulfillment_status}
+                                              tags={row.order?.shopify_order?.tags}
+                                              total_discounts={row.order?.shopify_order?.total_discounts}/>)
+    },
     {field: 'amount', title: 'Amount', className: 'text-end', sortable: true},
     {field: 'fee', title: 'Fee', className: 'text-end', sortable: true},
     {field: 'net', title: 'Net', className: 'text-end', sortable: true},
 ];
 
-const rowClassName = (row: ShopifyTransaction) => {
-    switch (row.type) {
-    case 'refund':
-        return 'table-warning';
-    case 'adjustment':
-        return 'table-info';
-    default:
-        return ''
-    }
+const rowClassName = (row: ShopifyPaymentTransaction) => {
+    return classNames({
+        'table-warning': row.type !== 'payout' && !row.order?.InvoiceNo,
+        'text-danger': row.type === 'refund',
+        'text-info': row.type === 'adjustment',
+    })
 };
 
-const tableId = 'shopify-transactions-list';
-
 const TransactionList: React.FC = () => {
-    const dispatch = useDispatch();
-    useEffect(() => {
-        dispatch(addPageSetAction({key: tableId, rowsPerPage: 10}));
-        dispatch(tableAddedAction({key: tableId, ...defaultTransactionSort}));
-    }, []);
+    const dispatch = useAppDispatch();
 
-    const selectedPayout = useSelector(selectSelectedPayout);
-    const sort = useSelector(selectTableSort(tableId));
+    const selectedPayout = useSelector(selectCurrentPayout);
+    const sort = useSelector(selectSort);
     const loading = useSelector(selectTransactionsLoading);
-    const list = useSelector(selectSortedTransactionList(sort as ShopifyTransactionSortProps));
-    const pagedList = useSelector(selectPagedData(tableId, list));
-    const [selected, setSelected] = useState(null as ShopifyTransaction | null);
+    const list = useSelector(selectSortedTransactionList);
+    const page = useSelector(selectPage);
+    const rowsPerPage = useSelector(selectRowsPerPage);
+    const [selected, setSelected] = useState<ShopifyPaymentTransaction | null>(null);
     const [completed, setCompleted] = useState(false);
 
-    const total = list.reduce((total, row) => {
+    interface TransactionsTotal {
+        amount: number|string;
+        fee: number|string;
+        net: number|string;
+    }
+    const total = list
+        .filter(row => row.type !== 'payout')
+        .reduce((total:TransactionsTotal, row) => {
         return {
-            amount: total.amount + Number(row.amount),
-            fee: total.fee + Number(row.fee),
-            net: total.net + Number(row.net),
+            amount: new Decimal(total.amount).add(row.amount ?? 0).toString(),
+            fee: new Decimal(total.fee).add(row.fee ?? 0).toString(),
+            net: new Decimal(total.net).add(row.net ?? 0).toString(),
         }
     }, {
         amount: 0,
         fee: 0,
         net: 0,
-    })
+    });
 
     const missingInvoices = list.filter(tx => tx.type !== 'payout').filter(tx => !tx.order || !tx.order?.InvoiceNo).length;
 
@@ -101,26 +113,32 @@ const TransactionList: React.FC = () => {
         if (!selectedPayout) {
             return;
         }
-        dispatch(fetchTransactionsAction(selectedPayout.id));
+        dispatch(loadTransactions(selectedPayout.id));
     }
-    const onClickCompleted = () => {
-        setCompleted(!completed);
+    const onClickCompleted = (ev:ChangeEvent<HTMLInputElement>) => {
+        setCompleted(ev.target.checked);
     }
 
     const onComplete = () => {
-        if (!completed) {
+        if (!completed || !selectedPayout) {
             return;
         }
-        dispatch(markPayoutCompletedAction());
+        dispatch(markPayoutComplete(selectedPayout?.id));
     }
 
-    const onSelect = (row: ShopifyTransaction) => {
+    const onSelect = (row: ShopifyPaymentTransaction) => {
         setSelected(row || null);
     }
 
+    const sortChangeHandler = (sort: SortProps) => {
+        dispatch(setSort(sort));
+    }
+    const pageChangeHandler = (page: number) => dispatch(setPage(page));
+    const rowsPerPageChangeHandler = (rpp: number) => dispatch(setRowsPerPage(rpp));
+
     const tfoot = (
         <tfoot>
-        {pagedList.length < list.length && (
+        {list.length > rowsPerPage && (
             <tr>
                 <td colSpan={10}>...</td>
             </tr>
@@ -144,7 +162,7 @@ const TransactionList: React.FC = () => {
 
                 <div className="row g-3">
                     <div className="col-auto">
-                        <FormCheck label="Mark Complete" checked={completed} onClick={onClickCompleted}
+                        <FormCheck label="Mark Complete" checked={completed} onChange={onClickCompleted}
                                    type="checkbox"/>
                     </div>
                     <div className="col-auto">
@@ -162,14 +180,15 @@ const TransactionList: React.FC = () => {
                     {' '}order{missingInvoices === 1 ? '' : 's'}.
                 </Alert>
             )}
-            <ErrorBoundary>
-                <SortableTable tableKey={tableId} keyField="id" fields={fields} data={pagedList}
-                               rowClassName={rowClassName}
-                               selected={selected?.id} onSelectRow={onSelect} tfoot={tfoot}/>
-            </ErrorBoundary>
-            <ErrorBoundary>
-                <PagerDuck pageKey={tableId} dataLength={list.length}/>
-            </ErrorBoundary>
+            <SortableTable keyField="id" fields={fields}
+                           data={list.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)}
+                           rowClassName={rowClassName}
+                           currentSort={sort}
+                           onChangeSort={sortChangeHandler}
+                           selected={selected?.id} onSelectRow={onSelect} tfoot={tfoot}/>
+            <TablePagination page={page} onChangePage={pageChangeHandler}
+                             rowsPerPage={rowsPerPage} onChangeRowsPerPage={rowsPerPageChangeHandler}
+                             count={list.length} showFirst showLast bsSize="sm"/>
         </Fragment>
     );
 }

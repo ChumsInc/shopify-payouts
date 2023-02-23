@@ -1,110 +1,124 @@
-import {combineReducers} from "redux";
-import {URL_TRANSACTIONS} from "../../constants";
-import {ActionInterface, ActionPayload, buildPath, fetchJSON} from "chums-ducks";
-import {ShopifyTransaction, ShopifyTransactionSortProps} from "../common-types";
-import {ThunkAction} from "redux-thunk";
-import {RootState} from "../index";
+import {ShopifyPaymentTransaction, SortProps} from "chums-types";
+import {TransactionTableFields} from "../types";
+import {createAction, createAsyncThunk, createReducer, createSelector} from "@reduxjs/toolkit";
+import {fetchPayoutTransactions} from "../../api/payouts";
+import {RootState} from "../../app/configureStore";
 
-export const transactionsFetchRequested = 'transactions/fetchList/Requested';
-export const transactionsFetchSucceeded = 'transactions/fetchList/Succeeded';
-export const transactionsFetchFailed = 'transactions/fetchList/Failed';
+const defaultSort: SortProps<TransactionTableFields> = {field: "id", ascending: true};
 
-export interface TransactionPayload extends ActionPayload {
-    transactions?: ShopifyTransaction[],
-}
-
-export interface TransactionAction extends ActionInterface {
-    payload?: TransactionPayload,
-}
-
-export interface TransactionThunkAction extends ThunkAction<any, RootState, any, TransactionAction> {
-}
-
-export const fetchTransactionsAction = (id: number): TransactionThunkAction =>
-    async (dispatch, getState) => {
-        try {
-            const state = getState();
-            if (selectTransactionsLoading(state)) {
-                return;
-            }
-            dispatch({type: transactionsFetchRequested});
-            const url = buildPath(URL_TRANSACTIONS, {id});
-            const res = await fetchJSON(url, {cache: 'no-cache'});
-            const transactions: ShopifyTransaction[] = res.transactions || [];
-            dispatch({type: transactionsFetchSucceeded, payload: {transactions}});
-        } catch (error: unknown) {
-            if (error instanceof Error) {
-                console.log("fetchTransactionsAction()", error.message);
-                return dispatch({type: transactionsFetchFailed, payload: {error, context: transactionsFetchRequested}})
-            }
-            console.error("fetchTransactionsAction()", error);
+export const transactionTableSorter = (sort: SortProps<TransactionTableFields>) =>
+    (a: ShopifyPaymentTransaction, b: ShopifyPaymentTransaction) => {
+        const {field, ascending} = sort;
+        const sortMod = ascending ? 1 : -1;
+        switch (field) {
+        case 'type':
+            return (a.type === b.type ? a.id - b.id : (a.type > b.type ? 1 : -1)) * sortMod;
+        case 'id':
+            return ((a.order?.id ?? 0) === (b.order?.id ?? 0)
+                ? (a.id - b.id)
+                : ((a.order?.id ?? 0) > (b.order?.id ?? 0) ? 1 : -1)) * sortMod;
+        case 'sage_SalesOrderNo':
+        case 'InvoiceNo':
+        case 'BillToName':
+            return (((a.order ?? {})[field] ?? '') === ((b.order ?? {})[field] ?? '')
+                    ? (a.id - b.id)
+                    : (((a.order ?? {})[field] ?? '') > ((b.order ?? {})[field] ?? '') ? 1 : -1)
+            ) * sortMod;
+        case 'amount':
+        case 'net':
+        case 'fee':
+            return (Number(a[field]) - Number(b[field])) * sortMod;
+        case 'email':
+            return ((a.order?.shopify_order?.email ?? '').toLowerCase() === (b.order?.shopify_order?.email ?? '').toLowerCase()
+                    ? (a.id - b.id)
+                    : ((a.order?.shopify_order?.email ?? '').toLowerCase() > (b.order?.shopify_order?.email ?? '').toLowerCase() ? 1 : -1)
+            ) * sortMod;
+        default:
+            return (a.id - b.id) * sortMod;
         }
-    };
+    }
+
+export const transactionSorter = (a: ShopifyPaymentTransaction, b: ShopifyPaymentTransaction) => {
+    return a.id > b.id ? 1 : -1;
+}
+
+export interface TransactionsState {
+    payout_id: number;
+    list: ShopifyPaymentTransaction[];
+    loading: boolean;
+    page: number;
+    rowsPerPage: number;
+    sort: SortProps<TransactionTableFields>;
+}
+
+export const initialTransactionsState: TransactionsState = {
+    payout_id: 0,
+    list: [],
+    loading: false,
+    page: 0,
+    rowsPerPage: 10,
+    sort: {...defaultSort}
+}
+
+
+export const loadTransactions = createAsyncThunk<ShopifyPaymentTransaction[], number>(
+    'transactions/load',
+    async (arg) => {
+        return fetchPayoutTransactions(arg);
+    }, {
+        condition: (arg, {getState}) => {
+            const state = getState() as RootState;
+            return !selectTransactionsLoading(state);
+        }
+    }
+)
+export const setPage = createAction<number>('transactions/setPage');
+export const setRowsPerPage = createAction<number>('transactions/setRowsPerPage');
+export const setSort = createAction<SortProps<TransactionTableFields>>('transactions/setSort');
+
+
+const transactionsReducer = createReducer(initialTransactionsState, (builder) => {
+    builder
+        .addCase(loadTransactions.pending, (state, action) => {
+            state.loading = true;
+            if (state.payout_id !== action.meta.arg) {
+                state.list = [];
+            }
+            state.payout_id = action.meta.arg;
+        })
+        .addCase(loadTransactions.fulfilled, (state, action) => {
+            state.list = action.payload.sort(transactionSorter);
+            state.loading = false;
+            state.page = 0;
+        })
+        .addCase(loadTransactions.rejected, (state) => {
+            state.loading = false;
+        })
+        .addCase(setPage, (state, action) => {
+            state.page = action.payload;
+        })
+        .addCase(setRowsPerPage, (state, action) => {
+            state.rowsPerPage = action.payload;
+            state.page = 0;
+        })
+        .addCase(setSort, (state, action) => {
+            state.page = 0;
+            state.sort = action.payload;
+        })
+});
+
 
 export const selectTransactionList = (state: RootState) => state.transactions.list;
 export const selectTransactionsLoading = (state: RootState) => state.transactions.loading;
-export const selectSortedTransactionList = (sort: ShopifyTransactionSortProps) => (state: RootState) => state.transactions.list.sort(transactionSorter(sort));
-
-const sortVal = (sort: ShopifyTransactionSortProps, tx: ShopifyTransaction): string | number | boolean => {
-    switch (sort.field) {
-    case 'name':
-        return [tx.order?.customer.first_name || '', tx.order?.customer.last_name || ''].join(' ').trim();
-    case 'customer':
-        return [tx.order?.ARDivisionNo || '', tx.order?.CustomerNo || ''].join('-').trim();
-    case 'invoice':
-        return tx.order?.InvoiceNo || '';
-    case 'SalesOrderNo':
-        return tx.order?.sage_SalesOrderNo || '';
-    default:
-        if (sort.field !== 'order') {
-            return tx[sort.field] || '';
-        }
-        return '';
+export const selectPage = (state: RootState) => state.transactions.page;
+export const selectRowsPerPage = (state: RootState) => state.transactions.rowsPerPage;
+export const selectSort = (state: RootState) => state.transactions.sort;
+export const selectSortedTransactionList = createSelector(
+    [selectTransactionList, selectSort],
+    (list, sort) => {
+        return [...list].sort(transactionTableSorter(sort));
     }
-}
+)
 
-export const transactionSorter = (sort: ShopifyTransactionSortProps) => (a: ShopifyTransaction, b: ShopifyTransaction) => {
-    const aVal = sortVal(sort, a);
-    const bVal = sortVal(sort, b);
-    return (aVal === bVal ? (a.id > b.id ? 1 : -1) : (aVal > bVal ? 1 : -1)) * (sort.ascending ? 1 : -1);
-}
 
-export const defaultTransactionSort: ShopifyTransactionSortProps = {
-    field: "id",
-    ascending: true,
-}
-
-const listReducer = (state: ShopifyTransaction[] = [], action: TransactionAction): ShopifyTransaction[] => {
-    const {type, payload} = action;
-    switch (type) {
-    case transactionsFetchSucceeded:
-        if (payload?.transactions) {
-            return payload.transactions
-                .filter(tx => tx.type !== 'payout')
-                .sort(transactionSorter(defaultTransactionSort));
-        }
-        return [];
-    case transactionsFetchFailed:
-        return [];
-    default:
-        return state;
-    }
-};
-
-const loadingReducer = (state = false, action: TransactionAction): boolean => {
-    const {type} = action;
-    switch (type) {
-    case transactionsFetchRequested:
-        return true;
-    case transactionsFetchSucceeded:
-    case transactionsFetchFailed:
-        return false;
-    default:
-        return state;
-    }
-};
-
-export default combineReducers({
-    list: listReducer,
-    loading: loadingReducer,
-});
+export default transactionsReducer;

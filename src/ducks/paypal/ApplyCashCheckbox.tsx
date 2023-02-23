@@ -1,37 +1,33 @@
-import React, {ChangeEvent, createRef} from 'react';
-import {useDispatch, useSelector} from 'react-redux';
+import React from 'react';
+import {useDispatch} from 'react-redux';
 import {selectOrderCashApplied} from "./selectors";
-import {toggleApplyCashAction} from "./actions";
+import {useAppSelector} from "../../app/configureStore";
+import {toggleCashApplied} from "./index";
+import {FormCheck} from "chums-components";
 
 
 export interface ApplyCashCheckboxProps {
-    id: number,
+    id?: number,
 }
 
 const ApplyCashCheckbox: React.FC<ApplyCashCheckboxProps> = ({id}) => {
     const dispatch = useDispatch();
-    const checkboxRef = createRef<HTMLInputElement>();
-    const checked = useSelector(selectOrderCashApplied(id));
+    const checked = useAppSelector((state) => selectOrderCashApplied(state, id ?? 0));
 
-    const changeHandler = (ev: ChangeEvent) => {
-        // ev.stopPropagation();
-        console.log('dispatching toggleApplyCashAction', id);
-        return dispatch(toggleApplyCashAction(id));
+    const changeHandler = () => {
+        if (!id) {
+            return;
+        }
+        return dispatch(toggleCashApplied(id));
     }
 
-    if (!id) {
+    if (id === 0) {
         return (<span>Apply Cash</span>);
     }
 
     return (
-        <div className="form-check form-check-inline">
-            <label htmlFor={`pp--order-id-${id}`} className="form-check-label">
-                {checked ? 'Selected' : 'Select'}
-            </label>
-            <input type="checkbox" className="form-check-input" id={`pp--order-id-${id}`} ref={checkboxRef}
-                   checked={checked} onChange={changeHandler}/>
-        </div>
-    );
+        <FormCheck type="checkbox" label={checked ? 'Selected' : 'Select'} checked={checked} onChange={changeHandler}/>
+    )
 }
 
 export default ApplyCashCheckbox;
