@@ -1,6 +1,6 @@
 {
   "name": "shopify-payouts",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "dependencies": {
     "@reduxjs/toolkit": "^1.9.3",
     "chums-components": "github:UtahGooner/chums-components",
