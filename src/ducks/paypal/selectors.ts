@@ -1,6 +1,7 @@
 import {RootState} from "../../app/configureStore";
 import {ExtendedSavedOrder, SortProps} from "chums-types";
 import {createSelector} from "@reduxjs/toolkit";
+import Decimal from "decimal.js";
 
 const orderSorter = (sort: SortProps) => (a: ExtendedSavedOrder, b: ExtendedSavedOrder) => {
     const {field, ascending} = sort;
@@ -44,7 +45,8 @@ export const selectCashAppliedTotal = createSelector(
     [selectList, selectCashApplied],
     (list, cashApplied) => {
         return list.filter(so => cashApplied.includes(Number(so.id)))
-            .map(so => Number(so.shopify_order?.total_price_usd ?? 0))
-            .reduce((pv, cv) => pv + cv, 0);
+            .map(so => new Decimal(so.shopify_order?.total_price ?? 0))
+            .reduce((pv, cv) => pv.add(cv), new Decimal(0))
+            .toString();
     }
 )

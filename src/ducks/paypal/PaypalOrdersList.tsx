@@ -94,7 +94,7 @@ const fieldList: SortableTableField[] = [
         field: 'total_price_usd',
         title: 'Total',
         sortable: true,
-        render: (row: ExtendedSavedOrder) => numeral(row.shopify_order?.total_price_usd ?? '0').format('$0,0.00'),
+        render: (row: ExtendedSavedOrder) => numeral(row.shopify_order?.total_price ?? '0').format('$0,0.00'),
         className: 'right',
     },
 ];
