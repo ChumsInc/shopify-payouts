@@ -1,13 +1,18 @@
 import React from "react";
 import {useSelector} from "react-redux";
 import {selectCurrentOrder} from "./selectors";
+import {useAppSelector} from "../../app/configureStore";
+import {ExtendedSavedOrder, ShopifyItem, ShopifyShippingLine, ShopifyTaxLine} from "chums-types";
 
 const OrderInfoDetail: React.FC = () => {
-    const current = useSelector(selectCurrentOrder);
+    const current: ExtendedSavedOrder | null = useAppSelector(selectCurrentOrder);
     if (!current || !current.shopify_order) {
         return null;
     }
-    const {shopify_order} = current
+    const shopify_order = current.shopify_order;
+    const lines:ShopifyItem[] = current.shopify_order.line_items ?? []
+    const tax_lines:ShopifyTaxLine[] = current.shopify_order.tax_lines ?? []
+    const shipping_lines:ShopifyShippingLine[] = current.shopify_order.shipping_lines ?? []
 
     // const footerData = [
     //     {id: 'items_total', name: 'Item Subtotal', price: shopify_order.total_line_items_price},
@@ -39,7 +44,7 @@ const OrderInfoDetail: React.FC = () => {
             </tr>
             </thead>
             <tbody>
-            {shopify_order.line_items.map(line => (
+            {lines.map(line => (
                 <tr key={line.id}>
                     <td>{line.sku}</td>
                     <td>{line.name}</td>
@@ -64,14 +69,14 @@ const OrderInfoDetail: React.FC = () => {
                 <th>Subtotal</th>
                 <td colSpan={2} className="text-end">{shopify_order.subtotal_price}</td>
             </tr>
-            {shopify_order.tax_lines.map((tax, index) => (
+            {tax_lines.map((tax, index) => (
                 <tr key={index}>
                     <td>&nbsp;</td>
                     <th>{tax.title}</th>
                     <td colSpan={2} className="text-end">{tax.price_set.shop_money.amount}</td>
                 </tr>
             ))}
-            {shopify_order.shipping_lines.map((ship, index:number) => (
+            {shipping_lines.map((ship, index:number) => (
                 <tr key={index}>
                     <td>&nbsp;</td>
                     <th>{ship.title}</th>

@@ -4,8 +4,8 @@ import {fetchJSON} from "chums-components";
 export async function fetchPayouts(): Promise<ShopifyPayment[]> {
     try {
         const url = '/api/shopify/payments/payouts';
-        const {payouts} = await fetchJSON<{ payouts: ShopifyPayment[] }>(url);
-        return payouts ?? [];
+        const res = await fetchJSON<{ payouts: ShopifyPayment[] }>(url);
+        return res?.payouts ?? [];
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPayouts()", err.message);
@@ -19,8 +19,8 @@ export async function fetchPayouts(): Promise<ShopifyPayment[]> {
 export async function postPayoutComplete(id: number): Promise<ShopifyPayment[]> {
     try {
         const url = `/api/shopify/payments/payouts/complete/${encodeURIComponent(id)}`;
-        const {payouts} = await fetchJSON<{ payouts: ShopifyPayment[] }>(url, {method: 'POST'});
-        return payouts ?? []
+        const res = await fetchJSON<{ payouts: ShopifyPayment[] }>(url, {method: 'POST'});
+        return res?.payouts ?? []
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("putPayoutComplete()", err.message);
@@ -35,8 +35,8 @@ export async function fetchPayoutTransactions(arg: number | string): Promise<Sho
     try {
         const url = '/api/shopify/payments/payouts/:id'
             .replace(':id', encodeURIComponent(arg));
-        const {transactions} = await fetchJSON<{ transactions: ShopifyPaymentTransaction[] }>(url, {cache: 'no-cache'});
-        return transactions ?? [];
+        const res = await fetchJSON<{ transactions: ShopifyPaymentTransaction[] }>(url, {cache: 'no-cache'});
+        return res?.transactions ?? [];
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPayoutTransactions()", err.message);
@@ -51,8 +51,8 @@ export async function fetchPayoutTransactions(arg: number | string): Promise<Sho
 export async function fetchPaypalInvoices(): Promise<ExtendedSavedOrder[]> {
     try {
         const url = '/api/shopify/payments/paypal';
-        const {orders} = await fetchJSON<{ orders: ExtendedSavedOrder[] }>(url, {cache: 'no-cache'});
-        return orders ?? [];
+        const res = await fetchJSON<{ orders: ExtendedSavedOrder[] }>(url, {cache: 'no-cache'});
+        return res?.orders ?? [];
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPaypalInvoices()", err.message);
@@ -67,8 +67,8 @@ export async function fetchOrder(arg: number | string): Promise<ExtendedSavedOrd
     try {
         const url = '/api/shopify/orders/:id'
             .replace(':id', encodeURIComponent(arg));
-        const {order} = await fetchJSON<{ order: ExtendedSavedOrder }>(url, {cache: 'no-cache'});
-        return order ?? null;
+        const res = await fetchJSON<{ order: ExtendedSavedOrder }>(url, {cache: 'no-cache'});
+        return res?.order ?? null;
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchOrder()", err.message);

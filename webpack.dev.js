@@ -22,12 +22,9 @@ module.exports = merge(common, {
             watch: false,
         }],
         hot: true,
-        proxy: {
-            '/api': {...localProxy},
-            '/node-dev/': {...localProxy},
-            '/node-sage/': {...localProxy},
-            '/sage/': {...localProxy},
-        },
+        proxy: [
+            {context: ['/api', '/node-sage', '/sage'], ...localProxy}
+        ],
         watchFiles: {
             paths: 'src/**/*',
             options: {

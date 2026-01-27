@@ -39,35 +39,35 @@ const renderOrderDate = (created_at?: string) => {
 };
 
 
-const fieldList: SortableTableField[] = [
+const fieldList: SortableTableField<ExtendedSavedOrder>[] = [
     {
         field: 'name',
         title: 'Shopify Order #',
         sortable: true,
-        render: (row: ExtendedSavedOrder) => <ShopifyLink id={row.shopify_order?.id} name={row.shopify_order?.name}/>
+        render: (row) => <ShopifyLink id={row.shopify_order?.id} name={row.shopify_order?.name}/>
     },
     {
         field: 'created_at',
         title: 'Date',
         sortable: true,
-        render: (row: ExtendedSavedOrder) => renderOrderDate(row.shopify_order?.created_at)
+        render: (row) => renderOrderDate(row.shopify_order?.created_at)
     },
     {
         field: 'CustomerNo',
         title: 'Customer #',
-        render: (row: ExtendedSavedOrder) => [row.ARDivisionNo, row.CustomerNo].join('-')
+        render: (row) => [row.ARDivisionNo, row.CustomerNo].join('-')
     },
     {
         field: 'customer',
         title: 'Customer',
         sortable: true,
-        render: (row: ExtendedSavedOrder) => `${row.shopify_order?.customer.first_name ?? ''} ${row.shopify_order?.customer.last_name ?? ''}`,
+        render: (row) => `${row.shopify_order?.customer.first_name ?? ''} ${row.shopify_order?.customer.last_name ?? ''}`,
     },
     {
         field: 'sage_SalesOrderNo',
         title: 'Sage SO #',
         sortable: true,
-        render: (row: ExtendedSavedOrder) => <SalesOrderLink sage_SalesOrderNo={row.sage_SalesOrderNo}
+        render: (row) => <SalesOrderLink sage_SalesOrderNo={row.sage_SalesOrderNo}
                                                              sage_Company={row.sage_Company}/>
     },
     {
