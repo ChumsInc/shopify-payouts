@@ -1,7 +1,7 @@
 import PaypalOrdersList from "./PaypalOrdersList.tsx";
-import OrderInfo from "./OrderInfo.tsx";
 import {ErrorBoundary} from "react-error-boundary";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback.tsx";
+import OrderInfo from "@/components/paypal/OrderInfo.tsx";
 
 const PayPalOrders = () => {
     return (

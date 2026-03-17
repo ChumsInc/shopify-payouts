@@ -1,32 +1,17 @@
-import React from "react";
-import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
 import {useAppSelector} from "@/app/configureStore.ts";
+import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
+import LegacyOrderInfoDetail from "@/components/paypal/LegacyOrderInfoDetail.tsx";
 
-const OrderInfoDetail: React.FC = () => {
+export default function OrderInfoDetail() {
     const current = useAppSelector(selectCurrentOrder);
-    if (!current || !current.shopify_order) {
+    if (!current) {
         return null;
     }
-    const {shopify_order} = current
-
-    // const footerData = [
-    //     {id: 'items_total', name: 'Item Subtotal', price: shopify_order.total_line_items_price},
-    //     {id: 'discount', name: 'Discount', price: shopify_order.total_discounts},
-    //     {id: 'subtotal', name: 'Subtotal', price: shopify_order.subtotal_price},
-    //     {
-    //         id: 'shipping',
-    //         name: 'Shipping: ' + shopify_order.shipping_lines.map(row => row.title).join(', '),
-    //         price: shopify_order.total_shipping_price_set.shop_money.amount
-    //     },
-    //     shopify_order.tax_lines.map(tax => {
-    //         return {
-    //             id: tax.title,
-    //             name: tax.title,
-    //             price: tax.price_set.shop_money.amount
-    //         };
-    //     }),
-    //     {id: 'total', name: 'Total', price: shopify_order.total_price},
-    // ];
+    if (!current.graphqlOrder) {
+        return (
+            <LegacyOrderInfoDetail />
+        )
+    }
 
     return (
         <table className="table table-xs table-hover">
@@ -39,53 +24,46 @@ const OrderInfoDetail: React.FC = () => {
             </tr>
             </thead>
             <tbody>
-            {shopify_order.line_items.map(line => (
+            {current.graphqlOrder.lineItems.nodes.map(line => (
                 <tr key={line.id}>
                     <td>{line.sku}</td>
                     <td>{line.name}</td>
                     <td className="text-end">{line.quantity}</td>
-                    <td className="text-end">{line.price_set.shop_money.amount}</td>
+                    <td className="text-end">{line.originalTotalSet.shopMoney.amount}</td>
                 </tr>
             ))}
             </tbody>
             <tfoot>
             <tr>
                 <td>&nbsp;</td>
-                <th>Items Subtotal</th>
-                <td colSpan={2} className="text-end">{shopify_order.total_line_items_price}</td>
-            </tr>
-            <tr>
-                <td>&nbsp;</td>
                 <th>Discount</th>
-                <td colSpan={2} className="text-end">{shopify_order.total_discounts}</td>
+                <td colSpan={2} className="text-end">{current.graphqlOrder.totalDiscountsSet?.shopMoney.amount}</td>
             </tr>
             <tr>
                 <td>&nbsp;</td>
                 <th>Subtotal</th>
-                <td colSpan={2} className="text-end">{shopify_order.subtotal_price}</td>
+                <td colSpan={2} className="text-end">{current.graphqlOrder.currentSubtotalPriceSet.shopMoney.amount}</td>
             </tr>
-            {shopify_order.tax_lines.map((tax, index) => (
+            {current.graphqlOrder.taxLines.map((tax, index) => (
                 <tr key={index}>
                     <td>&nbsp;</td>
                     <th>{tax.title}</th>
-                    <td colSpan={2} className="text-end">{tax.price_set.shop_money.amount}</td>
+                    <td colSpan={2} className="text-end">{tax.priceSet.shopMoney.amount}</td>
                 </tr>
             ))}
-            {shopify_order.shipping_lines.map((ship, index: number) => (
+            {current.graphqlOrder.shippingLines.nodes.map((ship, index: number) => (
                 <tr key={index}>
                     <td>&nbsp;</td>
-                    <th>{ship.title}</th>
-                    <td colSpan={2} className="text-end">{ship.price_set.shop_money.amount}</td>
+                    <th>{ship.code}</th>
+                    <td colSpan={2} className="text-end">{ship.discountedPriceSet.shopMoney.amount}</td>
                 </tr>
             ))}
             <tr>
                 <td>&nbsp;</td>
                 <th>Total</th>
-                <td colSpan={2} className="text-end">{shopify_order.total_price}</td>
+                <td colSpan={2} className="text-end">{current.graphqlOrder.currentTotalPriceSet.shopMoney.amount}</td>
             </tr>
             </tfoot>
         </table>
     )
 }
-
-export default OrderInfoDetail;

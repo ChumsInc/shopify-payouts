@@ -1,57 +1,45 @@
-import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
-import OrderInfoDetail from "./OrderInfoDetail.tsx";
-import dayjs from "dayjs";
-import {Alert} from "react-bootstrap";
 import {useAppSelector} from "@/app/configureStore.ts";
+import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
+import dayjs from "dayjs";
+import LegacyOrderInfo from "@/components/paypal/LegacyOrderInfo.tsx";
+import OrderInfoDetail from "@/components/paypal/OrderInfoDetail.tsx";
+import {Alert} from "react-bootstrap";
 
-// const detailFields = [
-//     {field: 'sku', title: 'SKU'},
-//     {field: 'name', title: 'Description'},
-//     {field: 'quantity', title: 'Quantity', className: 'right'},
-//     {field: 'price', title: 'Price', className: 'right'},
-// ];
-
-const OrderInfo = () => {
+export default function OrderInfo() {
     const selected = useAppSelector(selectCurrentOrder);
-    if (!selected || !selected.shopify_order) {
+
+    if (!selected) {
         return null;
     }
-    const {
-        import_status,
-        sage_SalesOrderNo,
-        import_result
-    } = selected;
-    const {
-        order_status_url,
-        name,
-        customer,
-        created_at,
-    } = selected.shopify_order;
+    if (!selected.graphqlOrder) {
+        return <LegacyOrderInfo/>
+    }
+
+    const orderStatusUrl = `https://admin.shopify.com/store/chumsinc/orders/${selected.graphqlOrder.legacyResourceId}`;
+
 
     return (
         <div>
-            <h3><a href={order_status_url} target="_blank">{name}</a></h3>
-            {import_status === 'linked' && (
-                <h4>{name} linked to {sage_SalesOrderNo}</h4>
-            )}
+            <h3>
+                <a href={orderStatusUrl} target="_blank">
+                    {selected.graphqlOrder.name}
+                </a>
+            </h3>
             <div className="card">
                 <div className="card-body">
-                    <h5 className="card-title">{customer.first_name} {customer.last_name}</h5>
-                    <div>{customer.email}</div>
-                    {!!created_at && (
-                        <div>Order Date: {dayjs(created_at).format("MM/DD/YYYY")}
-                            {' '}
-                            <small>{dayjs(created_at).format('hh:mm a')}</small>
-                        </div>
-                    )}
+                    <h5 className="card-title">{selected.graphqlOrder.billingAddress?.name}</h5>
+                    <div>{selected.graphqlOrder.email}</div>
+                    <div>
+                        Order Date:
+                        <span className="ms-1">{dayjs(selected.graphqlOrder.createdAt).format('MM/DD/YYYY')}</span>
+                        <small className="ms-1">{dayjs(selected.graphqlOrder.createdAt).format('hh:mm a')}</small>
+                    </div>
                 </div>
             </div>
-
             <OrderInfoDetail/>
-            {!!import_result && !!import_result.error && (
-                <Alert variant="danger" title="Import Error:">{import_result.error}</Alert>
+            {selected.import_result && selected.import_result.error && (
+                <Alert variant="danger" title="Import Error:">{selected.import_result.error}</Alert>
             )}
         </div>
-    );
+    )
 }
-export default OrderInfo;
