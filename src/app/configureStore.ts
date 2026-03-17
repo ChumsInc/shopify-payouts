@@ -1,22 +1,28 @@
 import {configureStore} from '@reduxjs/toolkit'
 import {combineReducers} from "redux";
-import {TypedUseSelectorHook, useDispatch, useSelector} from "react-redux";
-import alertsReducer from "../ducks/alerts";
-import payoutsReducer from "../ducks/payouts";
-import paypalReducer from "../ducks/paypal";
-import transactionsReducer from "../ducks/transactions";
+import {type TypedUseSelectorHook, useDispatch, useSelector} from "react-redux";
+import payoutsSlice from "@/ducks/payouts";
+import paypalSlice from "@/ducks/paypal/paypalSlice.ts";
+import transactionsSlice from "@/ducks/transactions/transactionsSlice.ts";
+import {alertsSlice} from "@chumsinc/alert-list";
 
 
 const rootReducer = combineReducers({
-    alerts: alertsReducer,
-    payouts: payoutsReducer,
-    paypal: paypalReducer,
-    transactions: transactionsReducer,
+    [alertsSlice.reducerPath]: alertsSlice.reducer,
+    [payoutsSlice.reducerPath]: payoutsSlice.reducer,
+    [transactionsSlice.reducerPath]: transactionsSlice.reducer,
+    [paypalSlice.reducerPath]: paypalSlice.reducer,
 });
 
 const store = configureStore({
     reducer: rootReducer,
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware({
+        serializableCheck: {
+            ignoredActionPaths: ['payload.error']
+        }
+    })
 });
+
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch;

@@ -1,23 +1,23 @@
-import PayoutsList from "./payouts/PayoutsList.tsx";
-import TransactionList from "./transactions/TransactionList.tsx";
+import PaypalOrdersList from "./PaypalOrdersList.tsx";
+import OrderInfo from "./OrderInfo.tsx";
 import {ErrorBoundary} from "react-error-boundary";
 import ErrorBoundaryFallback from "@/components/ErrorBoundaryFallback.tsx";
 
-const ShopifyPayments = () => {
+const PayPalOrders = () => {
     return (
-        <div className="row">
-            <div className="col-lg-3 col-md-4 col-6">
-                <ErrorBoundary FallbackComponent={ErrorBoundaryFallback}>
-                    <PayoutsList />
-                </ErrorBoundary>
-            </div>
+        <div className="row g-3">
             <div className="col-lg-9 col-md-8 col-6">
                 <ErrorBoundary FallbackComponent={ErrorBoundaryFallback}>
-                    <TransactionList />
+                    <PaypalOrdersList/>
+                </ErrorBoundary>
+            </div>
+            <div className="col-lg-3 col-md-4 col-6">
+                <ErrorBoundary FallbackComponent={ErrorBoundaryFallback}>
+                    <OrderInfo/>
                 </ErrorBoundary>
             </div>
         </div>
     )
-};
+}
 
-export default ShopifyPayments;
+export default PayPalOrders;

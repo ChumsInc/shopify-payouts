@@ -8,20 +8,21 @@
  * @copyright Copyright &copy; 2013, steve
  */
 
+
+use chums\ui\WebUI2;
+use chums\user\Groups;
+use chums\ui\JSOptions;
+use chums\ui\CSSOptions;
+
+
 require_once ("autoload.inc.php");
-require_once ('access.inc.php');
 
-$bodyPath = "/apps/shopify-payouts";
-$title = "Shopify Payments";
-$description = "";
-
-$ui = new WebUI($bodyPath, $title, $description, true, 5);
-$ui->bodyClassName = 'container-fluid';
-$ui->AddCSS("public/styles.css");
-$ui->addManifest('public/js/manifest.json');
-$ui->Send();
-/**
- * Changelog:
- */
-
-
+$ui = new WebUI2([
+    'title' => 'Shopify Payouts',
+    'bodyClassName' => 'container-fluid',
+    'requiredRoles' => [Groups::CS, Groups::ACCOUNTING],
+    'contentFile' => 'body.inc.php',
+]);
+$ui->addCSS('public/styles.css', CSSOptions::parse(['useTimestampVersion' => true]))
+    ->addViteManifest()
+    ->render();

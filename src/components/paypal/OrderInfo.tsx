@@ -1,9 +1,8 @@
-import React from 'react';
-import {useSelector} from 'react-redux';
-import {selectCurrentOrder} from "./selectors";
-import OrderInfoDetail from "./OrderInfoDetail";
-import {Alert} from "chums-components";
-import {format, parseJSON} from "date-fns";
+import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
+import OrderInfoDetail from "./OrderInfoDetail.tsx";
+import dayjs from "dayjs";
+import {Alert} from "react-bootstrap";
+import {useAppSelector} from "@/app/configureStore.ts";
 
 // const detailFields = [
 //     {field: 'sku', title: 'SKU'},
@@ -13,7 +12,7 @@ import {format, parseJSON} from "date-fns";
 // ];
 
 const OrderInfo = () => {
-    const selected = useSelector(selectCurrentOrder);
+    const selected = useAppSelector(selectCurrentOrder);
     if (!selected || !selected.shopify_order) {
         return null;
     }
@@ -40,9 +39,9 @@ const OrderInfo = () => {
                     <h5 className="card-title">{customer.first_name} {customer.last_name}</h5>
                     <div>{customer.email}</div>
                     {!!created_at && (
-                        <div>Order Date: {format(parseJSON(created_at), 'MM/dd/yyyy')}
+                        <div>Order Date: {dayjs(created_at).format("MM/DD/YYYY")}
                             {' '}
-                            <small>{format(parseJSON(created_at), 'hh:mm b')}</small>
+                            <small>{dayjs(created_at).format('hh:mm a')}</small>
                         </div>
                     )}
                 </div>
@@ -50,7 +49,7 @@ const OrderInfo = () => {
 
             <OrderInfoDetail/>
             {!!import_result && !!import_result.error && (
-                <Alert color="danger" title="Import Error:">{import_result.error}</Alert>
+                <Alert variant="danger" title="Import Error:">{import_result.error}</Alert>
             )}
         </div>
     );

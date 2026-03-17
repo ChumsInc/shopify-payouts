@@ -1,11 +1,12 @@
-import {ExtendedSavedOrder, ShopifyPayment, ShopifyPaymentTransaction} from "chums-types";
-import {fetchJSON} from "chums-components";
+import type {ExtendedSavedOrder} from "chums-types";
+import {fetchJSON} from "@chumsinc/ui-utils";
+import type {PayoutTransactionsResponse, ShopifyPaymentsPayout} from "@/ducks/types.ts";
 
-export async function fetchPayouts(): Promise<ShopifyPayment[]> {
+export async function fetchPayouts(): Promise<ShopifyPaymentsPayout[]> {
     try {
-        const url = '/api/shopify/payments/payouts';
-        const {payouts} = await fetchJSON<{ payouts: ShopifyPayment[] }>(url);
-        return payouts ?? [];
+        const url = '/api/shopify/graphql/query/payments/payouts/current.json';
+        const res = await fetchJSON<{ payouts: ShopifyPaymentsPayout[] }>(url, {cache: 'no-cache'});
+        return res?.payouts ?? [];
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPayouts()", err.message);
@@ -16,11 +17,11 @@ export async function fetchPayouts(): Promise<ShopifyPayment[]> {
     }
 }
 
-export async function postPayoutComplete(id: number): Promise<ShopifyPayment[]> {
+export async function postPayoutComplete(id: number | string): Promise<ShopifyPaymentsPayout[]> {
     try {
-        const url = `/api/shopify/payments/payouts/complete/${encodeURIComponent(id)}`;
-        const {payouts} = await fetchJSON<{ payouts: ShopifyPayment[] }>(url, {method: 'POST'});
-        return payouts ?? []
+        const url = `/api/shopify/payments/payouts/complete/${encodeURIComponent(id)}.json`;
+        const res = await fetchJSON<{ payouts: ShopifyPaymentsPayout[] }>(url, {method: 'POST'});
+        return res?.payouts ?? []
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("putPayoutComplete()", err.message);
@@ -31,12 +32,12 @@ export async function postPayoutComplete(id: number): Promise<ShopifyPayment[]> 
     }
 }
 
-export async function fetchPayoutTransactions(arg: number | string): Promise<ShopifyPaymentTransaction[]> {
+export async function fetchPayoutTransactions(arg: number | string): Promise<PayoutTransactionsResponse | null> {
     try {
-        const url = '/api/shopify/payments/payouts/:id'
+        const url = '/api/shopify/graphql/query/payments/payouts/:id/transactions.json'
             .replace(':id', encodeURIComponent(arg));
-        const {transactions} = await fetchJSON<{ transactions: ShopifyPaymentTransaction[] }>(url, {cache: 'no-cache'});
-        return transactions ?? [];
+        const res = await fetchJSON<PayoutTransactionsResponse>(url, {cache: 'no-cache'});
+        return res ?? null
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPayoutTransactions()", err.message);
@@ -50,9 +51,9 @@ export async function fetchPayoutTransactions(arg: number | string): Promise<Sho
 
 export async function fetchPaypalInvoices(): Promise<ExtendedSavedOrder[]> {
     try {
-        const url = '/api/shopify/payments/paypal';
-        const {orders} = await fetchJSON<{ orders: ExtendedSavedOrder[] }>(url, {cache: 'no-cache'});
-        return orders ?? [];
+        const url = '/api/shopify/payments/paypal.json';
+        const res = await fetchJSON<{ orders: ExtendedSavedOrder[] }>(url, {cache: 'no-cache'});
+        return res?.orders ?? [];
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchPaypalInvoices()", err.message);
@@ -67,8 +68,8 @@ export async function fetchOrder(arg: number | string): Promise<ExtendedSavedOrd
     try {
         const url = '/api/shopify/orders/:id'
             .replace(':id', encodeURIComponent(arg));
-        const {order} = await fetchJSON<{ order: ExtendedSavedOrder }>(url, {cache: 'no-cache'});
-        return order ?? null;
+        const res = await fetchJSON<{ order: ExtendedSavedOrder }>(url, {cache: 'no-cache'});
+        return res?.order ?? null;
     } catch (err: unknown) {
         if (err instanceof Error) {
             console.debug("fetchOrder()", err.message);

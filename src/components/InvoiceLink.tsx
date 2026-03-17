@@ -1,17 +1,14 @@
-import React from "react";
-
-const inv_url = `/reports/account/invoice/?company=:Company&invoice=:InvoiceNo`;
+const inv_url = `/reports/account/invoice/?company=chums&invoice=:InvoiceNo`;
 
 export interface InvoiceLinkProps {
-    invoiceNo?: string|null,
-    sage_Company?: string,
+    invoiceNo: string | null,
 }
-const InvoiceLink:React.FC<InvoiceLinkProps> = ({invoiceNo, sage_Company}) =>  {
-    if (!invoiceNo || !sage_Company) {
+
+const InvoiceLink = ({invoiceNo}: InvoiceLinkProps) => {
+    if (!invoiceNo) {
         return null;
     }
-    const url = inv_url.replace(':Company', encodeURIComponent(sage_Company))
-        .replace(':InvoiceNo', encodeURIComponent(invoiceNo));
+    const url = inv_url.replace(':InvoiceNo', encodeURIComponent(invoiceNo));
     return (<a href={url} target="_blank">{invoiceNo}</a>)
 }
 

@@ -1,9 +1,9 @@
 import React from "react";
-import {useSelector} from "react-redux";
-import {selectCurrentOrder} from "./selectors";
+import {selectCurrentOrder} from "@/ducks/paypal/paypalSlice.ts";
+import {useAppSelector} from "@/app/configureStore.ts";
 
 const OrderInfoDetail: React.FC = () => {
-    const current = useSelector(selectCurrentOrder);
+    const current = useAppSelector(selectCurrentOrder);
     if (!current || !current.shopify_order) {
         return null;
     }
@@ -71,7 +71,7 @@ const OrderInfoDetail: React.FC = () => {
                     <td colSpan={2} className="text-end">{tax.price_set.shop_money.amount}</td>
                 </tr>
             ))}
-            {shopify_order.shipping_lines.map((ship, index:number) => (
+            {shopify_order.shipping_lines.map((ship, index: number) => (
                 <tr key={index}>
                     <td>&nbsp;</td>
                     <th>{ship.title}</th>
