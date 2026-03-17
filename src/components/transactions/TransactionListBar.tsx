@@ -26,7 +26,7 @@ export default function TransactionListBar() {
         if (!completed || !selectedPayout) {
             return;
         }
-        dispatch(markPayoutComplete(selectedPayout?.id));
+        dispatch(markPayoutComplete(selectedPayout.legacyResourceId));
     }
 
     return (
